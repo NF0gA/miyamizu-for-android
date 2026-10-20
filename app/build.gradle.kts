@@ -123,7 +123,7 @@ dependencies {
 
     // Media3 / MediaSession
     implementation("androidx.media3:media3-session:1.3.1")
-    implementation("androidx.media3:media3-common-ktx:1.3.1")
+    implementation("androidx.media3:media3-common:1.3.1")
 
     // DataStore (Preferences)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
