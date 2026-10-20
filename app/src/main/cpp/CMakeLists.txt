@@ -4,22 +4,28 @@ project("miyamizu")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ---- External libraries ----
+# This CMakeLists.txt is under app/src/main/cpp; four levels up is the repo root.
 set(LIBS_ROOT ${CMAKE_SOURCE_DIR}/../../../../libs)
 
-# libogg (FLAC dependency)
-add_subdirectory(${LIBS_ROOT}/ogg ${CMAKE_BINARY_DIR}/ogg)
+# The soxr defaults build tests, examples, SIMD variants and optional bindings.
+# Pin a compact, portable Android configuration before adding its CMake project.
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(WITH_OPENMP OFF CACHE BOOL "" FORCE)
+set(WITH_LSR_BINDINGS OFF CACHE BOOL "" FORCE)
+set(WITH_CR32 ON CACHE BOOL "" FORCE)
+set(WITH_VR32 ON CACHE BOOL "" FORCE)
+set(WITH_CR32S OFF CACHE BOOL "" FORCE)
+set(WITH_CR64 OFF CACHE BOOL "" FORCE)
+set(WITH_CR64S OFF CACHE BOOL "" FORCE)
+set(WITH_PFFFT OFF CACHE BOOL "" FORCE)
 
-# libflac
-add_subdirectory(${LIBS_ROOT}/flac ${CMAKE_BINARY_DIR}/flac)
+add_subdirectory(${LIBS_ROOT}/ogg ${CMAKE_CURRENT_BINARY_DIR}/ogg)
+add_subdirectory(${LIBS_ROOT}/flac ${CMAKE_CURRENT_BINARY_DIR}/flac)
+add_subdirectory(${LIBS_ROOT}/soxr ${CMAKE_CURRENT_BINARY_DIR}/soxr)
+add_subdirectory(${LIBS_ROOT}/r8brain-free-src ${CMAKE_CURRENT_BINARY_DIR}/r8brain)
 
-# soxr
-add_subdirectory(${LIBS_ROOT}/soxr ${CMAKE_BINARY_DIR}/soxr)
-
-# r8brain-free-src
-add_subdirectory(${LIBS_ROOT}/r8brain-free-src ${CMAKE_BINARY_DIR}/r8brain)
-
-# ---- Miyamizu native engine ----
 add_library(miyamizu SHARED
     miyamizu_jni_bridge.cpp
     audio_output/aaudio_output.cpp
@@ -45,9 +51,7 @@ target_include_directories(miyamizu PRIVATE
 find_library(LOG_LIB log)
 find_library(ANDROID_LIB android)
 find_library(AAUDIO_LIB aaudio)
-
-# USB / pthread
-find_library(PTHREAD_LIB pthread)
+find_library(M_LIB m)
 
 target_link_libraries(miyamizu
     flac
@@ -57,7 +61,7 @@ target_link_libraries(miyamizu
     ${LOG_LIB}
     ${ANDROID_LIB}
     ${AAUDIO_LIB}
-    ${PTHREAD_LIB}
+    ${M_LIB}
 )
 
 target_compile_options(miyamizu PRIVATE
@@ -69,7 +73,4 @@ target_compile_options(miyamizu PRIVATE
     -Werror=return-type
 )
 
-# Enable NEON on ARM64
-if(ANDROID_ABI STREQUAL "arm64-v8a")
-    target_compile_options(miyamizu PRIVATE -mfpu=neon)
-endif()
+# arm64-v8a NEON は ABI の必須機能。-mfpu=neon は32-bit ARM向けなので付けない。
