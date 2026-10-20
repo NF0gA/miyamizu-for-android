@@ -1,48 +1,45 @@
-#!/usr/bin/env bash
-set -Eeuo pipefail
+#!/bin/bash
+set -e
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
-LIBS_DIR="$ROOT_DIR/libs"
-TMP_DIR="$(mktemp -d)"
-trap 'rm -rf "$TMP_DIR"' EXIT
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIBS_DIR="$SCRIPT_DIR/../libs"
 mkdir -p "$LIBS_DIR"
 
-fetch_tree() {
-    local repo="$1" ref="$2" dest="$3" marker="$4" mode="$5"
-    if [[ -f "$dest/$marker" ]]; then
-        echo "[ok] $dest already contains $marker"
-        return
+echo "=== Fetching native libraries for Miyamizu Android ==="
+
+# ---- soxr ----
+if [ ! -d "$LIBS_DIR/soxr" ]; then
+    echo "Fetching soxr..."
+    TMP_DIR=$(mktemp -d)
+    if ! git clone --depth 1 --branch 0.1.3 https://github.com/chirlu/soxr.git "$TMP_DIR/soxr" 2>/dev/null; then
+        echo "  git clone failed, trying curl fallback..."
+        curl -L --retry 3 https://sourceforge.net/projects/soxr/files/soxr-0.1.3-Source.tar.xz -o "$TMP_DIR/soxr.tar.xz"
+        tar -xJf "$TMP_DIR/soxr.tar.xz" -C "$TMP_DIR"
+        mv "$TMP_DIR"/soxr-0.1.3-Source "$LIBS_DIR/soxr"
+    else
+        mv "$TMP_DIR/soxr" "$LIBS_DIR/soxr"
     fi
-    echo "Fetching $repo ($ref)..."
-    git clone --depth 1 --branch "$ref" "$repo" "$TMP_DIR/checkout"
-    mkdir -p "$dest"
-    case "$mode" in
-        c-libraries)
-            [[ ! -d "$TMP_DIR/checkout/include" ]] || cp -a "$TMP_DIR/checkout/include" "$dest/"
-            [[ ! -d "$TMP_DIR/checkout/src" ]] || cp -a "$TMP_DIR/checkout/src" "$dest/"
-            ;;
-        root-sources)
-            find "$TMP_DIR/checkout" -maxdepth 1 -type f ! -name 'CMakeLists.txt' ! -name 'CMakeLists.txt.*' -exec cp -a {} "$dest/" \\;
-            ;;
-    esac
-    rm -rf "$TMP_DIR/checkout"
-}
-
-# Existing project directories contain Android-specific CMake files but not the upstream sources.
-fetch_tree https://github.com/xiph/ogg.git v1.3.5 "$LIBS_DIR/ogg" src/bitwise.c c-libraries
-fetch_tree https://github.com/xiph/flac.git 1.4.3 "$LIBS_DIR/flac" src/libFLAC/stream_decoder.c c-libraries
-fetch_tree https://github.com/avaneev/r8brain-free-src.git master "$LIBS_DIR/r8brain-free-src" CDSPResampler.h root-sources
-
-# soxr upstream tags differ between mirrors; fetch the canonical repository first.
-if [[ ! -f "$LIBS_DIR/soxr/src/soxr.h" ]]; then
-    echo "Fetching soxr source..."
-    git clone --depth 1 --branch 0.1.3 https://github.com/chirlu/soxr.git "$TMP_DIR/soxr"
-    mkdir -p "$LIBS_DIR/soxr"
-    cp -a "$TMP_DIR/soxr/." "$LIBS_DIR/soxr/"
-    # The project's Android CMakeLists is written for the upstream src/ layout.
-    cp "$LIBS_DIR/soxr/CMakeLists.txt.android" "$LIBS_DIR/soxr/src/CMakeLists.txt"
+    rm -rf "$TMP_DIR"
 fi
 
-echo "Native library source fetch completed. This does not imply that the NDK build succeeds."
-echo "Next: ./gradlew :app:assembleDebug (after Gradle wrapper and Android SDK/NDK are available)."
+# ---- r8brain-free-src ----
+if [ ! -d "$LIBS_DIR/r8brain-free-src" ]; then
+    echo "Fetching r8brain-free-src..."
+    git clone --depth 1 https://github.com/avaneev/r8brain-free-src.git "$LIBS_DIR/r8brain-free-src"
+    echo "  r8brain-free-src fetched."
+fi
+
+# ---- libflac ----
+if [ ! -d "$LIBS_DIR/flac" ]; then
+    echo "Fetching libflac..."
+    git clone --depth 1 --branch 1.4.3 https://github.com/xiph/flac.git "$LIBS_DIR/flac"
+fi
+
+# ---- libogg (FLAC dependency) ----
+if [ ! -d "$LIBS_DIR/ogg" ]; then
+    echo "Fetching libogg..."
+    git clone --depth 1 --branch v1.3.5 https://github.com/xiph/ogg.git "$LIBS_DIR/ogg"
+fi
+
+echo "=== All libraries fetched ==="
+echo "Next: Open in Android Studio and build."

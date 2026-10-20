@@ -24,6 +24,7 @@ import com.miyamizu.player.favorites.FavoriteScreen
 import com.miyamizu.player.history.HistoryScreen
 import com.miyamizu.player.playlist.PlaylistScreen
 import com.miyamizu.player.settings.SettingsScreen
+import com.miyamizu.player.ui.library.LibraryScreen
 import com.miyamizu.player.ui.player.PlayerScreen
 import com.miyamizu.player.ui.queue.QueueScreen
 
@@ -118,10 +119,16 @@ private fun MiyamizuNavHost(
     ) {
         // ===== ライブラリ画面 =====
         composable(Screen.Library.route) {
-            // TODO: LibraryScreen実装（フェーズC）
-            // 仮表示
-            LibraryPlaceholderScreen(
+            LibraryScreen(
                 onNavigateToPlayer = {
+                    navController.navigate(Screen.Player.route)
+                },
+                onPlayTrack = { track, trackList ->
+                    // TODO: Playerにトラックとキューを設定して再生
+                    navController.navigate(Screen.Player.route)
+                },
+                onPlayAlbum = { tracks ->
+                    // TODO: Playerにアルバムキューを設定して再生
                     navController.navigate(Screen.Player.route)
                 }
             )
