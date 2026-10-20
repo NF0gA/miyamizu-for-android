@@ -22,8 +22,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
-      - name: Install NDK & CMake
+      - name: Install NDK & CMake & Build Tools
         run: |
           sdkmanager "ndk;27.0.12077973"
           sdkmanager "cmake;3.22.1"
